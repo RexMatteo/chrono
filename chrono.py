@@ -140,8 +140,15 @@ def aggiungi_progetto_cli(
 
 
 @app.command()
-def aggiorna_progetto_cli():
-    return
+def cambia_nome_progetto() -> None:
+    lista_progetti()
+    vecchio_progetto = input("Quale progetto cambiamo? ")
+    if ts.exist("projects", "name", vecchio_progetto):
+        nuovo_progetto = input("Quale nome gli diamo? ")
+        ts.change_project_name(nuovo_progetto, vecchio_progetto)
+        print(f"Ho cambiat nome al progetto da {vecchio_progetto} a {nuovo_progetto}.")
+    else:
+        print("non ho trovato il progetto")
 
 
 @app.command()

@@ -85,6 +85,13 @@ def init_db():
         cx.executescript(SCHEMA_SQL)
 
 
+def exist(table: str, column:str, value):
+    query = f"SELECT 1 FROM {table} WHERE {column} = ? COLLATE NOCASE LIMIT 1;"
+    with connect() as cx:
+        row = cx.execute(query, (value,)).fetchone()
+        return row is not None
+
+
 # ---------------------------------------------------------------------------------------------
 
 ## CLIENTS
@@ -203,6 +210,17 @@ def check_project_state():
             """
         )
         return [dict(row) for row in rows]
+
+
+def change_project_name(new_name, old_name):
+    with connect() as cx:
+        cx.execute(
+            """
+            UPDATE projects SET name = ? WHERE name= ? COLLATE NOCASE;
+            """,
+            (new_name, old_name),
+        )
+        cx.commit()
 
 
 def list_project():
