@@ -1,0 +1,1 @@
+aggiungere tutte le parti di delete di jobs, progetti e clienti.
