@@ -92,6 +92,15 @@ def exist(table: str, column:str, value):
         return row is not None
 
 
+def get_one(query):
+    msg = "get not done"
+    try:
+        with connect() as cx:
+            return cx.execute(query)
+    except sqlite3.IntegrityError:
+        return msg
+
+
 # ---------------------------------------------------------------------------------------------
 
 ## CLIENTS
@@ -108,8 +117,7 @@ def add_client(name, city, nation, notes=None):
 
 
 def list_clients():
-    with connect() as cx:
-        return [dict(r) for r in cx.execute("SELECT name, city FROM clients ORDER BY name, city")]
+    return [dict(r) for r in get_one("SELECT name, city FROM clients ORDER BY name, city")]
 
 
 def update_client():
@@ -204,13 +212,8 @@ def update_project_state(set_value, project_name):
 
 
 def check_project_state():
-    with connect() as cx:
-        rows = cx.execute(
-            """
-            SELECT name FROM projects WHERE active=1;
-            """
-        )
-        return [dict(row) for row in rows]
+    query = "SELECT name FROM projects WHERE active=1";
+    return [dict(r) for r in get_one(query)]
 
 
 def change_project_name(new_name, old_name):

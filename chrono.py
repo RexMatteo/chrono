@@ -181,6 +181,12 @@ def cancella_progetto(
 # Jobs
 
 
+@app.command()
+def controlla_stato_progetti():
+    stato = ts.check_project_state()
+    print(*(f"{i}. {d['name']}" for i, d in enumerate(stato, start=1)), sep="\n")
+
+
 def aggiungi_job(at_start, at_end):
     oggi = datetime.now().date().isoformat()
     inizio = f"{oggi} {at_start}:00"
@@ -219,13 +225,6 @@ def cancella_job():
 
 
 ##RECUPERO DATI
-
-
-@app.command()
-def lista_progetti_attivi():
-    progetti_attivi = ts.check_project_state()
-    for progetto in progetti_attivi:
-        typer.echo(f"Progetto: {progetto['name']}")
 
 
 @app.command()
