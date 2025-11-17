@@ -6,6 +6,7 @@ from errors import ClientNotFound, MultiPlantFound, PlantNotFound, ProjectNotFou
 oggi = datetime.now().date().isoformat()
 app = typer.Typer()
 
+
 # --------------------------------------------------------------------------------------------------------------
 
 # ECCEZIONI
@@ -48,6 +49,15 @@ def progetto_non_trovato(progetto, inizio, fine):
         return
 
 
+def validazione_input(prompt, validazione):
+    while True:
+        value = input(prompt).strip()
+        if validazione(value):
+            return value
+        print("⚠️  Input non valido. Riprova.\n")
+
+
+
 # --------------------------------------------------------------------------------------------------------------
 
 ## AGGIUNTA DATI
@@ -57,12 +67,10 @@ def progetto_non_trovato(progetto, inizio, fine):
 # Clienti
 
 
-def aggiungi_cliente(nome, citta, nazione=None):
-    try:
-        ts.add_client(nome, citta, nazione)
-        print(f"Il cliente {nome} con lo stablimento in {citta} è stato creato!")
-    except Exception as e:
-        print(e)
+@app.command()
+def lista_clienti_cli():
+    for c in ts.list_clients():
+        print(f"{c['name']} - {c['city']}")
 
 
 @app.command()
@@ -71,14 +79,23 @@ def aggiungi_cliente_cli(
     citta: str = typer.Option(None, "--città", "-c", prompt="Città"),
     nazione: str = typer.Option(None, "--nazione", "-s", prompt="Nazione"),
 ) -> None:
-    aggiungi_cliente(nome, citta, nazione)
+
+    ts.add_client(nome, citta, nazione)
+    if ts.exist("clients", "name", nome):
+        typer.echo(f"Il cliente {nome} con lo stablimento in {citta} è stato creato!")
+    else:
+        typer.echo(f"il cliente {nome} non è stato salvato correttamente")
 
 
 @app.command()
 def cancella_cliente_cli(
-    cliente: str = typer.Option(None, "--cliente", "-c", prompt="Cliente"),
+    nome: str = typer.Option(None, "--nome", "-n", prompt="Nome"),
 ):
-    ts.delete_client(cliente)
+    ts.delete_client(nome)
+    if ts.exist("clients", "name", nome):
+        typer.echo(f"Cancellazione non andata a buon fine")
+    else:
+        typer.echo(f"Cancellato!")
 
 
 @app.command()
@@ -142,13 +159,16 @@ def aggiungi_progetto_cli(
 @app.command()
 def cambia_nome_progetto() -> None:
     lista_progetti()
-    vecchio_progetto = input("Quale progetto cambiamo? ")
-    if ts.exist("projects", "name", vecchio_progetto):
-        nuovo_progetto = input("Quale nome gli diamo? ")
-        ts.change_project_name(nuovo_progetto, vecchio_progetto)
-        print(f"Ho cambiat nome al progetto da {vecchio_progetto} a {nuovo_progetto}.")
-    else:
-        print("non ho trovato il progetto")
+    vecchio = validazione_input(
+        "Quale progetto vuoi modificare? ",
+        lambda v: ts.exist("projects", "name", v),
+    )
+    nuovo = validazione_input(
+        "Che nome diamo al progetto? ",
+        lambda v: len(v) > 0,
+    )
+    ts.change_project_name(nuovo, vecchio)
+    print(f"Ho cambiat nome al progetto da {vecchio} a {nuovo}.")
 
 
 @app.command()

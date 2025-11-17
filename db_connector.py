@@ -108,7 +108,8 @@ def add_client(name, city, nation, notes=None):
 
 
 def list_clients():
-    return
+    with connect() as cx:
+        return [dict(r) for r in cx.execute("SELECT name, city FROM clients ORDER BY name, city")]
 
 
 def update_client():
