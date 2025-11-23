@@ -1,4 +1,4 @@
-#!/Users/matteo/Documents/chrono/venv/bin/python3.12
+#!/home/mat/Documents/01_automation_studio/20_chrono/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

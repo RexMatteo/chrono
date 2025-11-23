@@ -1,0 +1,24 @@
+Obiettivi (da obbiettivi.txt):
+1) Timesheet e reportistica
+2) Solo CLI al momento
+3) Uso locale singolo utente
+
+Roadmap proposta per il software:
+1) Sistemare db_connector (percorso DB corretto, typo tuple).
+2) Comando init-db per creare lo schema.
+3) CRUD minimi per clienti e progetti.
+4) Comandi add-job, list-jobs, report con range date.
+5) (Opzionale) Timer start/stop e controllo sovrapposizioni orarie.
+6) Export CSV/JSON dai report.
+
+Struttura file suggerita:
+- controller/db_connector.py: connessione, init, funzioni DB di base.
+- model/clients.py / model/projects.py / model/jobs.py: logica di business.
+- chrono.py: CLI (argparse) che invoca i model e stampa output.
+
+Funzionalità chiave:
+- Creazione clienti/progetti.
+- Inserimento job con start/end, descrizione, tipo lavoro, luogo.
+- Validazioni: end >= start, opzionale controllo overlap per giorno/progetto.
+- Report CLI: range date, filtri cliente/progetto, group-by day|project, export CSV/JSON.
+- Utility: backup con .backup, import-csv opzionale.

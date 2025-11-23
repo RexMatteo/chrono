@@ -1,7 +1,15 @@
-import db_connector as ts
+import controller.db_connector as ts
+from controller.errors import (
+    ClientNotFound,
+    MultiPlantFound,
+    PlantNotFound,
+    ProjectNotFound,
+)
+import model.projects as project
+import model.clients as client
+import model.jobs as job
 import typer
 from datetime import datetime
-from errors import ClientNotFound, MultiPlantFound, PlantNotFound, ProjectNotFound
 
 oggi = datetime.now().date().isoformat()
 app = typer.Typer()
@@ -17,7 +25,7 @@ app = typer.Typer()
 def stabilimento_non_trovato(nome_cliente, citta_cliente, progetto):
     if typer.confirm("Non ho trovato il plant in archivio, vuoi aggiungerlo? "):
         aggiungi_cliente(nome=nome_cliente, citta=citta_cliente)
-        ts.add_project(
+        project.add_project(
             client_name=nome_cliente,
             project_name=progetto,
             city=citta_cliente,
@@ -39,7 +47,7 @@ def progetto_non_trovato(progetto, inizio, fine):
                 nome_cliente=nome_cliente,
                 citta_cliente=citta_cliente,
             )
-            ts.add_job(oggi, progetto, inizio, fine)
+            job.add_job(oggi, progetto, inizio, fine)
             typer.echo(f"Ho segnato la lavorazione sulla commessa {progetto}!")
 
         except PlantNotFound as e:
@@ -57,7 +65,6 @@ def validazione_input(prompt, validazione):
         print("⚠️  Input non valido. Riprova.\n")
 
 
-
 # --------------------------------------------------------------------------------------------------------------
 
 ## AGGIUNTA DATI
@@ -68,38 +75,43 @@ def validazione_input(prompt, validazione):
 
 
 @app.command()
-def lista_clienti_cli():
-    for c in ts.list_clients():
-        print(f"{c['name']} - {c['city']}")
+def lista_clienti():
+    p = "city"
+    n = "name"
+    rows = client.list_clients()
+    for c in rows:
+        print(f"{c[n]} - {c[p]}")
 
 
 @app.command()
-def aggiungi_cliente_cli(
+def aggiungi_cliente(
     nome: str = typer.Option(None, "--nome", "-n", prompt="Nome"),
     citta: str = typer.Option(None, "--città", "-c", prompt="Città"),
     nazione: str = typer.Option(None, "--nazione", "-s", prompt="Nazione"),
 ) -> None:
-
-    ts.add_client(nome, citta, nazione)
+    cl = client.Client(nome, citta, nazione)
+    client.add_client(cl)
     if ts.exist("clients", "name", nome):
         typer.echo(f"Il cliente {nome} con lo stablimento in {citta} è stato creato!")
     else:
-        typer.echo(f"il cliente {nome} non è stato salvato correttamente")
+        typer.echo("❌ Annullato")
 
 
 @app.command()
-def cancella_cliente_cli(
+def cancella_cliente(
     nome: str = typer.Option(None, "--nome", "-n", prompt="Nome"),
+    citta: str = typer.Option(None, "--citta", "-c", prompt="Citta"),
 ):
-    ts.delete_client(nome)
+    cl = client.Client(nome, citta)
+    client.delete_client(cl)
     if ts.exist("clients", "name", nome):
-        typer.echo(f"Cancellazione non andata a buon fine")
+        typer.echo("Cancellazione non andata a buon fine")
     else:
-        typer.echo(f"Cancellato!")
+        typer.echo("❌ Annullato")
 
 
 @app.command()
-def aggiorna_cliente_cli():
+def aggiorna_cliente():
     return
 
 
@@ -107,16 +119,23 @@ def aggiorna_cliente_cli():
 
 
 @app.command()
-def aggiorna_stato_progetto_cli(
+def aggiorna_stato_progetto(
     stato: bool = typer.Option(None, "--stato", "-s", prompt="Stato progetto"),
     progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
 ):
-    ts.update_project_state(stato, progetto)
+    project.update_project_state(stato, progetto)
 
 
-def aggiungi_progetto(progetto, nome_cliente, citta_cliente):
+@app.command()
+def aggiungi_progetto(
+    progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
+    nome_cliente: str = typer.Option(None, "--cliente", "-c", prompt="Cliente"),
+    citta_cliente: str = typer.Option(
+        None, "--citta", "-C", prompt="Stabilimento (città)"
+    ),
+) -> None:
     try:
-        ts.add_project(
+        project.add_project(
             client_name=nome_cliente, project_name=progetto, city=citta_cliente
         )
         typer.echo(
@@ -137,23 +156,12 @@ def aggiungi_progetto(progetto, nome_cliente, citta_cliente):
             print("Ritorna quando avrai scelto!")
             return
 
-        ts.add_project(
+        project.add_project(
             client_name=nome_cliente, project_name=progetto, city=citta_cliente
         )
         print(
             f"Ho creato il progetto {progetto} e l'ho assegnato allo stabilimento {nome_cliente} {citta_cliente}"
         )
-
-
-@app.command()
-def aggiungi_progetto_cli(
-    progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
-    nome_cliente: str = typer.Option(None, "--cliente", "-c", prompt="Cliente"),
-    citta_cliente: str = typer.Option(
-        None, "--citta", "-C", prompt="Stabilimento (città)"
-    ),
-) -> None:
-    aggiungi_progetto(progetto, nome_cliente, citta_cliente)
 
 
 @app.command()
@@ -167,7 +175,7 @@ def cambia_nome_progetto() -> None:
         "Che nome diamo al progetto? ",
         lambda v: len(v) > 0,
     )
-    ts.change_project_name(nuovo, vecchio)
+    project.change_project_name(nuovo, vecchio)
     print(f"Ho cambiat nome al progetto da {vecchio} a {nuovo}.")
 
 
@@ -175,7 +183,7 @@ def cambia_nome_progetto() -> None:
 def cancella_progetto(
     progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
 ):
-    ts.delete_project(progetto)
+    project.delete_project(progetto)
 
 
 # Jobs
@@ -183,7 +191,7 @@ def cancella_progetto(
 
 @app.command()
 def controlla_stato_progetti():
-    stato = ts.check_project_state()
+    stato = project.check_project_state()
     print(*(f"{i}. {d['name']}" for i, d in enumerate(stato, start=1)), sep="\n")
 
 
@@ -194,14 +202,14 @@ def aggiungi_job(at_start, at_end):
 
     try:
         # codice che può generare un errore
-        progetti_attivi = ts.check_project_state()
+        progetti_attivi = project.check_project_state()
         if len(progetti_attivi) > 1:
-            for project in progetti_attivi:
-                typer.echo(project["name"])
+            for p in progetti_attivi:
+                typer.echo(p["name"])
             progetto = input("Cisono più progetti attivi, quale scegli?")
         else:
             progetto = progetti_attivi[0]["name"]
-        ts.add_job(oggi, progetto, inizio, fine)
+        job.add_job(oggi, progetto, inizio, fine)
         typer.echo(f"Ho segnato la lavorazione sulla commessa {progetto}!")
 
     # non ho trovato il progetto in archivio
@@ -229,12 +237,12 @@ def cancella_job():
 
 @app.command()
 def lista_progetti():
-    projects = ts.list_project()
+    projects = project.list_project()
     if not projects:
         print("non ho trovato progetti in tabella")
         return
-    for project in projects:
-        print(f"Progetto: {project['project']} - {project['client']}")
+    for p in projects:
+        print(f"Progetto: {p['project']} - {p['client']}")
 
 
 # def report_giornaliero(giorno) -> None:
@@ -243,6 +251,12 @@ def lista_progetti():
 
 
 # --------------------------------------------------------------------------------------------------------------
+
+
+@app.command()
+def init_database():
+    ts.init_db()
+    typer.echo(f"Database creato in:{ts.DB_PATH}")
 
 
 if __name__ == "__main__":

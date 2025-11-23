@@ -1,0 +1,5 @@
+
+obbiettivi:  
+1 - timesheet e reportistica
+2 - per ora basta in cli con le funzionalita di timesheet e reportistica
+3  - solo io in localw
