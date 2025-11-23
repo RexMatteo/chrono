@@ -76,11 +76,9 @@ def validazione_input(prompt, validazione):
 
 @app.command()
 def lista_clienti():
-    p = "city"
-    n = "name"
     rows = client.list_clients()
     for c in rows:
-        print(f"{c[n]} - {c[p]}")
+        print(f"{c['name']} - {c['city']} - {c['nation']}")
 
 
 @app.command()
@@ -98,21 +96,46 @@ def aggiungi_cliente(
 
 
 @app.command()
-def cancella_cliente(
-    nome: str = typer.Option(None, "--nome", "-n", prompt="Nome"),
-    citta: str = typer.Option(None, "--citta", "-c", prompt="Citta"),
-):
+def aggiorna_cliente():
+    scelte = {}
+    new = client.Client()
+    old = client.Client()
+    rows = client.list_clients()
+
+    for c in range(1, len(rows) + 1):
+        s = c - 1
+        scelte[c] = f"{c} - {rows[s]['name']}, {rows[s]['city']}, {rows[s]['nation']}"
+        typer.echo(scelte[c])
+
+    index = typer.prompt("Quale cliente cambi? ")
+    old.name = rows[int(index) - 1]["name"]
+    old.city = rows[int(index) - 1]["city"]
+    typer.echo("inserisci i nuovi parametri.")
+    new.name = typer.prompt("    nuovo nome? ")
+    new.city = typer.prompt("    nuova città? ")
+    new.nation = typer.prompt("    nuova nazione? ")
+    delete = typer.confirm("Sicuto di voler modificafe il cliente?")
+    if not delete:
+        return
+    client.update_client(new, old)
+    return
+
+
+@app.command()
+def cancella_cliente():
+    typer.echo(lista_clienti())
+    nome: str = typer.prompt("Nome")
+    citta: str = typer.prompt("Città")
+    delete = typer.confirm("Vuoi cancellare davvero i cliente e i progetti relativi?")
+    if not delete:
+        print("❌ Annullato")
+        return
     cl = client.Client(nome, citta)
     client.delete_client(cl)
     if ts.exist("clients", "name", nome):
         typer.echo("Cancellazione non andata a buon fine")
     else:
-        typer.echo("❌ Annullato")
-
-
-@app.command()
-def aggiorna_cliente():
-    return
+        typer.echo("✅ Cancellato")
 
 
 # Progetti

@@ -13,7 +13,12 @@ class Client:
 
 
 def list_clients():
-    return [r for r in db.get_all("SELECT name, city FROM clients ORDER BY name, city")]
+    return [
+        r
+        for r in db.get_all(
+            "SELECT name, city, nation FROM clients ORDER BY name, city, nation"
+        )
+    ]
 
 
 def add_client(params: Client):
@@ -22,33 +27,32 @@ def add_client(params: Client):
             "INSERT OR IGNORE INTO clients(name, city, nation, notes) VALUES (?,?,?,?)",
             (params.name, params.city, params.nation, params.notes),
         )
+        return
 
 
-def update_client(params: Client):
-    sql = "UPDATE clients SET name = ?, city = ? nation = ? WHERE name = ?"
+def update_client(new_params: Client, old_params: Client):
+    sql = (
+        "UPDATE clients SET name = ?, city = ?, nation = ? WHERE name = ? AND city = ?"
+    )
     with db.transaction() as cx:
         cx.execute(
             sql,
-            (params.name, params.city, params.nation),
+            (
+                new_params.name,
+                new_params.city,
+                new_params.nation,
+                old_params.name,
+                old_params.city,
+            ),
         )
-    return
+        return
 
 
 def delete_client(params: Client):
     q_project_count = "SELECT COUNT(*) FROM projects p JOIN clients c ON c.id = p.client_id WHERE c.name = ? COLLATE NOCASE;"
     with db.transaction() as cx:
-        pc = cx.execute(
-            q_project_count,
+        cx.execute(
+            "DELETE FROM clients WHERE name = ? COLLATE NOCASE",
             (params.name,),
-        ).fetchone()[0]
-        if (
-            input(f"Elimino il cliente selezionato e i {pc} progetti relativi?").lower()
-            == "s"
-        ):
-            cx.execute(
-                "DELETE FROM clients WHERE name = ? COLLATE NOCASE",
-                (params.name,),
-            )
-        else:
-            print("❌ Annullato")
-            return
+        )
+        return

@@ -1,24 +1,30 @@
 #!/usr/bin/env python3
 from controller import db_connector as db
 from controller import errors as er
+from model.clients import Client
+from typing import Optional
 
 
-def add_project_new(client_name, project_name, color=None, city=None):
+class Project:
+    name: Optional[str] = None
+    color: Optional[str] = None
+    active: Optional[int] = None
+
+
+def add_project_new(p_params: Project, c_params: Client):
     query_city = (
         "SELECT id FROM clients WHERE name=? COLLATE NOCASE AND city=? COLLATE NOCASE"
     )
     query_city_list = "SELECT id, city FROM clients WHERE name=? COLLATE NOCASE"
-    query_no_city = (
-        "SELECT id, city FROM clients WHERE name=? COLLATE NOCASE",
-        (client_name,),
-    )
-    if city:
+    query_no_city = "SELECT id, city FROM clients WHERE name=? COLLATE NOCASE"
+
+    if c_params.city:
         row = db.get_one(
             query_city,
-            (client_name, city),
+            (c_params.name, c_params.city),
         )
         if not row:
-            options = db.get_all(query_city_list, (client_name))
+            options = db.get_all(query_city_list, (c_params.name))
             if options:
                 cities = ", ".join(sorted({r["city"] or "—" for r in options}))
                 return cities
@@ -26,7 +32,7 @@ def add_project_new(client_name, project_name, color=None, city=None):
     else:
         rows = db.get_all(
             query_city_list,
-            (client_name),
+            (c_params.name),
         )
         if rows:
             client_id = rows
