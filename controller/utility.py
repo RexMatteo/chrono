@@ -1,4 +1,7 @@
+from datetime import datetime
 from tabulate import tabulate
+from rich.console import Console
+from rich.table import Table
 
 
 def jobs_tag(type: str, value: str | None = None):
@@ -60,4 +63,37 @@ def print_table(d):
     print(tabulate(rows, headers=["Codice", "Descrizione"], tablefmt="fancy_grid"))
 
 
-print_table(jobs_tag("work"))
+def dict_to_table(rows: list[dict] | None = None, *, title: str):
+    """Crea una tabella dinamica in base alle chiavi presenti nei dizionari passati."""
+    if not rows:
+        print("Nessun cliente trovato.")
+        return
+
+    # Usa le chiavi del primo dict come intestazioni
+    fieldnames = list(rows[0].keys())
+    table = Table(title=title)
+    table.add_column("index")
+
+    for field in fieldnames:
+        table.add_column(field)
+
+    for idx, row in enumerate(rows, start=1):
+        table.add_row(str(idx), *[str(row.get(field, "")) for field in fieldnames])
+
+    Console().print(table)
+
+
+def is_data_valid(v: str) -> bool:
+    try:
+        datetime.strptime(v, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def is_time_valid(v: str) -> bool:
+    try:
+        datetime.strptime(v, "%H:%M")
+        return True
+    except ValueError:
+        return False

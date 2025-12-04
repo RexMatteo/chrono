@@ -49,10 +49,12 @@ def update_client(new_params: Client, old_params: Client):
 
 
 def delete_client(params: Client):
-    q_project_count = "SELECT COUNT(*) FROM projects p JOIN clients c ON c.id = p.client_id WHERE c.name = ? COLLATE NOCASE;"
     with db.transaction() as cx:
         cx.execute(
-            "DELETE FROM clients WHERE name = ? COLLATE NOCASE",
-            (params.name,),
+            "DELETE FROM clients WHERE name = ? AND city = ? COLLATE NOCASE",
+            (
+                params.name,
+                params.city,
+            ),
         )
         return

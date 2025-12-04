@@ -1,0 +1,29 @@
+Lettura elenco dei pacchetti...
+Generazione albero delle dipendenze...
+Lettura informazioni sullo stato...
+Alcuni pacchetti non possono essere installati. Questo può voler dire
+che è stata richiesta una situazione impossibile oppure, se si sta
+usando una distribuzione in sviluppo, che alcuni pacchetti richiesti
+non sono ancora stati creati o sono stati rimossi da Incoming.
+Le seguenti informazioni possono aiutare a risolvere la situazione:
+
+I seguenti pacchetti hanno dipendenze non soddisfatte:
+ handlebars : Dipende: nodejs
+ node-ansi-escapes : Dipende: nodejs
+ node-chokidar : Dipende: nodejs
+ node-es-abstract : Dipende: nodejs
+ node-eslint-scope : Dipende: nodejs
+ node-file-entry-cache : Dipende: nodejs
+ node-flat-cache : Dipende: nodejs
+ node-for-in : Dipende: nodejs
+ node-functional-red-black-tree : Dipende: nodejs
+ node-is-extendable : Dipende: nodejs
+ node-istanbul : Dipende: node-js-yaml ma non è installabile
+ node-jest-worker : Dipende: node-types-node
+ node-jsesc : Dipende: nodejs
+ node-neo-async : Dipende: nodejs
+ node-regenerate : Dipende: nodejs
+ node-source-map-support : Dipende: nodejs
+ node-strip-json-comments : Dipende: nodejs
+ node-to-regex-range : Dipende: nodejs
+ node-unique-filename : Dipende: nodejs

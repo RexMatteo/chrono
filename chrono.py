@@ -1,13 +1,7 @@
 import controller.db_connector as ts
-from controller.errors import (
-    ClientNotFound,
-    MultiPlantFound,
-    PlantNotFound,
-    ProjectNotFound,
-)
+import controller.utility as util
 import model.projects as project
 import model.clients as client
-import model.jobs as job
 import typer
 from datetime import datetime
 
@@ -22,47 +16,19 @@ app = typer.Typer()
 # --------------------------------------------------------------------------------------------------------------
 
 
-def stabilimento_non_trovato(nome_cliente, citta_cliente, progetto):
-    if typer.confirm("Non ho trovato il plant in archivio, vuoi aggiungerlo? "):
-        aggiungi_cliente(nome=nome_cliente, citta=citta_cliente)
-        project.add_project(
-            client_name=nome_cliente,
-            project_name=progetto,
-            city=citta_cliente,
-        )
-        typer.echo(
-            f"Ho creato il progetto {progetto} e l'ho assegnato allo stabilimento {nome_cliente} {citta_cliente}"
-        )
-    else:
-        typer.echo("Ok torna quando vuoi!")
-
-
-def progetto_non_trovato(progetto, inizio, fine):
-    if typer.confirm("Vuoi creare un nuovo progetto con questo nome?"):
-        nome_cliente = typer.prompt("A quale cliente associ questo progetto")
-        citta_cliente = typer.prompt("In quale città risiede il cliente")
-        try:
-            aggiungi_progetto(
-                progetto=progetto,
-                nome_cliente=nome_cliente,
-                citta_cliente=citta_cliente,
-            )
-            job.add_job(oggi, progetto, inizio, fine)
-            typer.echo(f"Ho segnato la lavorazione sulla commessa {progetto}!")
-
-        except PlantNotFound as e:
-            print(e)
-            stabilimento_non_trovato(nome_cliente, citta_cliente, progetto)
-    else:
-        return
-
-
 def validazione_input(prompt, validazione):
     while True:
         value = input(prompt).strip()
         if validazione(value):
             return value
         print("⚠️  Input non valido. Riprova.\n")
+
+
+def ask_stop_process():
+    delete = typer.confirm("Vuoi procedere?")
+    if not delete:
+        print("❌ Annullato")
+        return
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -77,8 +43,8 @@ def validazione_input(prompt, validazione):
 @app.command()
 def lista_clienti():
     rows = client.list_clients()
-    for c in rows:
-        print(f"{c['name']} - {c['city']} - {c['nation']}")
+    util.dict_to_table(rows, title="Lista Clienti")
+    return rows
 
 
 @app.command()
@@ -88,6 +54,7 @@ def aggiungi_cliente(
     nazione: str = typer.Option(None, "--nazione", "-s", prompt="Nazione"),
 ) -> None:
     cl = client.Client(nome, citta, nazione)
+    ask_stop_process()
     client.add_client(cl)
     if ts.exist("clients", "name", nome):
         typer.echo(f"Il cliente {nome} con lo stablimento in {citta} è stato creato!")
@@ -97,42 +64,37 @@ def aggiungi_cliente(
 
 @app.command()
 def aggiorna_cliente():
-    scelte = {}
     new = client.Client()
     old = client.Client()
-    rows = client.list_clients()
-
-    for c in range(1, len(rows) + 1):
-        s = c - 1
-        scelte[c] = f"{c} - {rows[s]['name']}, {rows[s]['city']}, {rows[s]['nation']}"
-        typer.echo(scelte[c])
-
-    index = typer.prompt("Quale cliente cambi? ")
+    rows = lista_clienti()
+    index = validazione_input(
+        "Quale cliente cambi? ",
+        lambda v: v.isdigit() and 1 <= int(v) <= len(rows),
+    )
     old.name = rows[int(index) - 1]["name"]
     old.city = rows[int(index) - 1]["city"]
     typer.echo("inserisci i nuovi parametri.")
     new.name = typer.prompt("    nuovo nome? ")
     new.city = typer.prompt("    nuova città? ")
     new.nation = typer.prompt("    nuova nazione? ")
-    delete = typer.confirm("Sicuto di voler modificafe il cliente?")
-    if not delete:
-        return
+    ask_stop_process()
     client.update_client(new, old)
     return
 
 
 @app.command()
 def cancella_cliente():
-    typer.echo(lista_clienti())
-    nome: str = typer.prompt("Nome")
-    citta: str = typer.prompt("Città")
-    delete = typer.confirm("Vuoi cancellare davvero i cliente e i progetti relativi?")
-    if not delete:
-        print("❌ Annullato")
-        return
-    cl = client.Client(nome, citta)
+    rows = lista_clienti()
+    cl = client.Client()
+    index = validazione_input(
+        "Quale cliente cancelli? ",
+        lambda v: v.isdigit() and 1 <= int(v) <= len(rows),
+    )
+    cl.name = rows[int(index) - 1]["name"]
+    cl.city = rows[int(index) - 1]["city"]
+    ask_stop_process()
     client.delete_client(cl)
-    if ts.exist("clients", "name", nome):
+    if ts.exist("clients", "city", cl.city):
         typer.echo("Cancellazione non andata a buon fine")
     else:
         typer.echo("✅ Cancellato")
@@ -142,74 +104,76 @@ def cancella_cliente():
 
 
 @app.command()
-def aggiorna_stato_progetto(
-    stato: bool = typer.Option(None, "--stato", "-s", prompt="Stato progetto"),
-    progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
-):
-    project.update_project_state(stato, progetto)
+def lista_progetti():
+    rows = project.list_project()
+    util.dict_to_table(rows, title="Lista Progetti")
+    return rows
 
 
 @app.command()
-def aggiungi_progetto(
-    progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
-    nome_cliente: str = typer.Option(None, "--cliente", "-c", prompt="Cliente"),
-    citta_cliente: str = typer.Option(
-        None, "--citta", "-C", prompt="Stabilimento (città)"
-    ),
-) -> None:
-    try:
-        project.add_project(
-            client_name=nome_cliente, project_name=progetto, city=citta_cliente
-        )
-        typer.echo(
-            f"Ho creato il progetto {progetto} e l'ho assegnato allo stabilimento {nome_cliente} {citta_cliente}"
-        )
+def lista_progetti_attivi():
+    rows = project.list_active_project()
+    util.dict_to_table(rows, title="Lista Progetti Attivi")
+    return rows
 
-    except ClientNotFound as e:
-        typer.echo(e)
-        stabilimento_non_trovato(nome_cliente, citta_cliente, progetto)
 
-    except MultiPlantFound as e:
-        print(
-            "Non hai scelto il plant, se ti serve un suggerimento te li elenco qua sotto: "
-        )
-        print(e.cities)
-        citta_cliente = input(f"A quale plant vuoi associare a {progetto}: ")
-        if not citta_cliente:
-            print("Ritorna quando avrai scelto!")
-            return
+@app.command()
+def aggiorna_stato_progetto():
+    rows = lista_progetti()
+    p = project.Project()
+    index = typer.prompt("Quale progetto vuoi cambiare? ")
+    p.name = rows[int(index) - 1]["project"]
+    p.active = not rows[int(index) - 1]["active"]
+    ask_stop_process()
+    project.update_project_state(p)
 
-        project.add_project(
-            client_name=nome_cliente, project_name=progetto, city=citta_cliente
-        )
-        print(
-            f"Ho creato il progetto {progetto} e l'ho assegnato allo stabilimento {nome_cliente} {citta_cliente}"
-        )
+
+@app.command()
+def aggiungi_progetto():
+    rows = lista_clienti()
+    pr = project.Project()
+    cl = client.Client()
+    index = validazione_input(
+        "Quale cliente scegli? ",
+        lambda v: v.isdigit() and 1 <= int(v) <= len(rows),
+    )
+    cl.name = rows[int(index) - 1]["name"]
+    cl.city = rows[int(index) - 1]["city"]
+    pr.name = typer.prompt("Quale nome vuoi usare?")
+    ask_stop_process()
+    project.add_project(pr, cl)
 
 
 @app.command()
 def cambia_nome_progetto() -> None:
-    lista_progetti()
-    vecchio = validazione_input(
-        "Quale progetto vuoi modificare? ",
-        lambda v: ts.exist("projects", "name", v),
+    rows = lista_progetti()
+    vp = project.Project()
+    np = project.Project()
+    index = validazione_input(
+        "Quale cliente scegli? ",
+        lambda v: v.isdigit() and 1 <= int(v) <= len(rows),
     )
-    nuovo = validazione_input(
+    vp.name = rows[int(index) - 1]["project"]
+    np.name = validazione_input(
         "Che nome diamo al progetto? ",
         lambda v: len(v) > 0,
     )
-    project.change_project_name(nuovo, vecchio)
-    print(f"Ho cambiat nome al progetto da {vecchio} a {nuovo}.")
+    ask_stop_process()
+    project.change_project_name(np, vp)
+    print(f"Ho cambiat nome al progetto da {vp.name} a {np.name}.")
 
 
 @app.command()
-def cancella_progetto(
-    progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
-):
-    project.delete_project(progetto)
-
-
-# Jobs
+def cancella_progetto():
+    rows = lista_progetti()
+    p = project.Project()
+    index = validazione_input(
+        "quale progetto vuoi cancellare?",
+        lambda v: v.isdigit() and 1 <= int(v) <= len(rows),
+    )
+    p.name = rows[int(index) - 1]["project"]
+    ask_stop_process()
+    project.delete_project(p)
 
 
 @app.command()
@@ -218,36 +182,29 @@ def controlla_stato_progetti():
     print(*(f"{i}. {d['name']}" for i, d in enumerate(stato, start=1)), sep="\n")
 
 
-def aggiungi_job(at_start, at_end):
-    oggi = datetime.now().date().isoformat()
-    inizio = f"{oggi} {at_start}:00"
-    fine = f"{oggi} {at_end}:00"
-
-    try:
-        # codice che può generare un errore
-        progetti_attivi = project.check_project_state()
-        if len(progetti_attivi) > 1:
-            for p in progetti_attivi:
-                typer.echo(p["name"])
-            progetto = input("Cisono più progetti attivi, quale scegli?")
-        else:
-            progetto = progetti_attivi[0]["name"]
-        job.add_job(oggi, progetto, inizio, fine)
-        typer.echo(f"Ho segnato la lavorazione sulla commessa {progetto}!")
-
-    # non ho trovato il progetto in archivio
-    except ProjectNotFound as e:
-        typer.echo(e)
-        progetto_non_trovato(progetto, inizio, fine)
+# Jobs
 
 
 @app.command()
-def aggiungi_job_cli(
-    #    progetto: str = typer.Option(None, "--progetto", "-p", prompt="Codice progetto"),
-    at_start: str = typer.Option(None, "--inizio", "-i", prompt="Ora inizio"),
-    at_end: str = typer.Option(None, "--fine", "-f", prompt="Ora fine"),
-):
-    aggiungi_job(at_start, at_end)
+def aggiungi_job():
+    lista_progetti_attivi()
+
+    data = validazione_input(
+        "Inserisci la data (YYYY-MM-DD): ",
+        util.is_data_valid,
+    )
+    typer.echo(data)
+    at_start = validazione_input(
+        "A che ora hai cominciato? ",
+        util.is_time_valid,
+    )
+    at_end = validazione_input(
+        "A che ora hai cominciato? ",
+        util.is_time_valid,
+    )
+    inizio = f"{data} {at_start}:00"
+    fine = f"{data} {at_end}:00"
+    typer.echo(f"questo giorno {data} hai iniziato alle {inizio} e finito alle {fine}")
 
 
 @app.command()
@@ -256,16 +213,6 @@ def cancella_job():
 
 
 ##RECUPERO DATI
-
-
-@app.command()
-def lista_progetti():
-    projects = project.list_project()
-    if not projects:
-        print("non ho trovato progetti in tabella")
-        return
-    for p in projects:
-        print(f"Progetto: {p['project']} - {p['client']}")
 
 
 # def report_giornaliero(giorno) -> None:

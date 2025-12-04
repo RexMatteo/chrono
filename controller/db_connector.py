@@ -37,17 +37,9 @@ CREATE TABLE IF NOT EXISTS projects (
   FOREIGN KEY(client_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS workdays (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  day TEXT NOT NULL,           -- YYYY-MM-DD
-  notes TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(day)
-);
 
 CREATE TABLE IF NOT EXISTS jobs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  workday_id INTEGER NOT NULL,
   project_id INTEGER NOT NULL,
   start_at TEXT NOT NULL,      -- ISO 8601: 2025-11-02T09:30:00
   end_at   TEXT NOT NULL,
@@ -55,11 +47,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   work_type TEXT,
   description TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(workday_id) REFERENCES workdays(id) ON DELETE CASCADE,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_jobs_workday ON jobs(workday_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_project ON jobs(project_id);
 """
 
